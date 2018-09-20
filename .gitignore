@@ -1,0 +1,8 @@
+*.png
+temp
+avgwls/*
+!avgwls/.gitkeep
+freqs/*
+!freqs/.gitkeep
+docs/*
+!docs/.gitkeep
