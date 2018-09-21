@@ -6,52 +6,14 @@ import argparse
 
 parser = argparse.ArgumentParser(description='Plot the OCR quality of documents in 2D canvas.')
 parser.add_argument('-l', help='Label to show next to each marker', dest='labels', choices=['id', 'wl'])
+parser.add_argument('-x', help='Variable for X-axis', dest='xaxis', choices=['samohlasky', 'avgwl', 'topn', 'skdist'], default='samohlasky')
+parser.add_argument('-y', help='Variable for Y-axis', dest='yaxis', choices=['samohlasky', 'avgwl', 'topn', 'skdist'], default='skdist')
+parser.add_argument('-n', help='Number of top character to use for topn metric', dest='topnchars', type=int, default=5)
 args = parser.parse_args()
-
-def plot_top(n):
-    print("Calculating top " + str(n))
-    topn = [row[np.argsort(row)[-n:]].values.sum() for i,row in train.iterrows()]
-    print("Plotting top " + str(n))
-    plt.clf()
-    plt.scatter(avgwls, topn, s=0.5)
-    plt.xlabel('Average word length')
-    plt.ylabel('Top ' + str(n) + ' characters')
-    plt.title('OCR quality')
-    plt.savefig('top' + str(n) + '.png')
-
-    plt.clf()
-    plt.scatter(avgwls[:100], topn[:100], s=0.5)
-    plt.xlabel('Average word length')
-    plt.ylabel('Top ' + str(n) + ' characters')
-    plt.title('OCR quality')
-    
-    for i in range(100):
-        plt.text(avgwls[i], topn[i], str(i))
-    plt.savefig('top' + str(n) + '_first_100.png', dpi=600)
-
-def plot_samohlasky():
-    plt.clf()
-    plt.scatter(avgwls, samohlasky, s=0.5)
-    plt.xlabel('Average word length')
-    plt.ylabel('Samohlasky')
-    plt.title('OCR quality')
-    plt.savefig('samohlasky.png')
-    plt.show()
+# todo zoom
 
 def awgwls_colors():
   return [(1 if a>12 else a/12, a/8 if a<8 else 1 if a < 12 else (18-a)/6 if a<18 else 0, (8-a)/8 if a<8 else 0) for a in avgwls]
-
-def plot_samo_topn(n):
-    print("Calculating top " + str(n))
-    topn = [row[np.argsort(row)[-n:]].values.sum() for i,row in train.iterrows()]
-    print("Plotting top " + str(n))
-    plt.clf()
-    plt.scatter(samohlasky, topn, s=0.5, c=awgwls_colors())
-    plt.xlabel('Samohlasky')
-    plt.ylabel('Top ' + str(n) + ' characters')
-    plt.title('OCR quality')
-    plt.savefig('samohlasky_top' + str(n) + '.png', figsize=(6,4), dpi=300)
-
 
 def sk_dist(row):
     return sum([d(char,row[char] + (row.to_dict()[char.upper()] if char.upper()!=char else 0)) for char in row.to_dict() if char.lower()==char])
@@ -73,26 +35,52 @@ def label(i):
         if args.labels == 'wl':
             return str(avgwls[i])
 
-def plot_samo_skdists():
+def calculate_topn(n):
+    print("Calculating top " + str(n))
+    return [row[np.argsort(row)[-n:]].values.sum() for i,row in train.iterrows()]
+
+def calculate_samohlasky():
+    print("Calculating samohlasky")
+    return [row[list('AEIOUYÁÉÍÓÚÝaeiouyáäéíóôúý')].values.sum() for i,row in train.iterrows()]
+
+def calculate_skdist():
+    print("Calculating skdist")
+    return [sk_dist(row) for i,row in train.iterrows()]
+
+def series(series_name):
+    if series_name == 'samohlasky':
+        return calculate_samohlasky()
+    elif series_name == 'avgwl':
+        return avgwls
+    elif series_name == 'topn':
+        return calculate_topn(args.topnchars)
+    elif series_name == 'skdist':
+        return calculate_skdist()
+    else:
+        return []    
+
+def xseries():
+    return series(args.xaxis)
+
+def yseries():
+    return series(args.yaxis)
+
+def plot_scatter():
     plt.clf()
-    plt.scatter(samohlasky, skdists, s=0.5, c=awgwls_colors())
-    plt.xlabel('Samohlasky')
-    plt.ylabel('SK distance')
+    plt.scatter(xseries(), yseries(), s=0.5, c=awgwls_colors())
+    plt.xlabel(args.xaxis)
+    plt.ylabel(args.yaxis)
     plt.title('OCR quality')
     if args.labels:
         for i in range(len(samohlasky)):
             plt.text(samohlasky[i], skdists[i], label(i))
-    plt.savefig('samohlasky_sk_dist.png', figsize=(6,4), dpi=300)
+    plt.savefig('scatter.png', figsize=(6,4), dpi=300)
     plt.show()
 
-print(args.labels)
+print(args)
 print("Reading avgwls")
 avgwls = [float(line) for line in open("current_avgwls").read().split('\n') if line]
 print("Reading freqs")
 train=pd.read_csv("current_freqs", dtype=np.float)
-print("Calculating skdist")
-skdists = [sk_dist(row) for i,row in train.iterrows()]
-print("Calculating samohlasky")
-samohlasky = [row[list('AEIOUYÁÉÍÓÚÝaeiouyáäéíóôúý')].values.sum() for i,row in train.iterrows()]
 
-plot_samo_skdists()
+plot_scatter()
