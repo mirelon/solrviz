@@ -2,6 +2,11 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import argparse
+
+parser = argparse.ArgumentParser(description='Plot the OCR quality of documents in 2D canvas.')
+parser.add_argument('-l', help='Label to show next to each marker', dest='labels', choices=['id', 'wl'])
+args = parser.parse_args()
 
 def plot_top(n):
     print("Calculating top " + str(n))
@@ -61,15 +66,26 @@ def d(char, freq):
         print(char, sk_freq)
     return abs(freq - sk_freq)
 
+def label(i):
+    if args.labels == 'id':
+        return str(i+1)
+    else:
+        if args.labels == 'wl':
+            return str(avgwls[i])
+
 def plot_samo_skdists():
     plt.clf()
     plt.scatter(samohlasky, skdists, s=0.5, c=awgwls_colors())
     plt.xlabel('Samohlasky')
     plt.ylabel('SK distance')
     plt.title('OCR quality')
+    if args.labels:
+        for i in range(len(samohlasky)):
+            plt.text(samohlasky[i], skdists[i], label(i))
     plt.savefig('samohlasky_sk_dist.png', figsize=(6,4), dpi=300)
     plt.show()
 
+print(args.labels)
 print("Reading avgwls")
 avgwls = [float(line) for line in open("current_avgwls").read().split('\n') if line]
 print("Reading freqs")
