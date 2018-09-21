@@ -9,8 +9,11 @@ parser.add_argument('-l', help='Label to show next to each marker', dest='labels
 parser.add_argument('-x', help='Variable for X-axis', dest='xaxis', choices=['samohlasky', 'avgwl', 'topn', 'skdist'], default='samohlasky')
 parser.add_argument('-y', help='Variable for Y-axis', dest='yaxis', choices=['samohlasky', 'avgwl', 'topn', 'skdist'], default='skdist')
 parser.add_argument('-n', help='Number of top character to use for topn metric', dest='topnchars', type=int, default=5)
+parser.add_argument('-zx', help='Zoom for x value', dest='zx', type=float)
+parser.add_argument('-zy', help='Zoom for y value', dest='zy', type=float)
+parser.add_argument('-zdx', help='Zoom max distance from x value', dest='zdx', type=float, default=0.1)
+parser.add_argument('-zdy', help='Zoom max distance from y value', dest='zdy', type=float, default=0.1)
 args = parser.parse_args()
-# todo zoom
 
 def awgwls_colors():
   return [(1 if a>12 else a/12, a/8 if a<8 else 1 if a < 12 else (18-a)/6 if a<18 else 0, (8-a)/8 if a<8 else 0) for a in avgwls]
@@ -65,15 +68,31 @@ def xseries():
 def yseries():
     return series(args.yaxis)
 
+def xycseries():
+    return zip(xseries(), yseries(), awgwls_colors())
+
+def in_zoom_window(x,y):
+    return abs(x-args.zx) <= args.zdx and abs(y-args.zy) <= args.zdy
+
+def zoomed_xycseries():
+    if args.zx or args.zy:
+        return [(x,y,c) for x,y,c in xycseries() if in_zoom_window(x,y)]
+    else:
+        return xycseries()
+
 def plot_scatter():
+    zxyc = list(zip(*zoomed_xycseries()))
+    zoomed_xseries = list(zxyc[0])
+    zoomed_yseries = list(zxyc[1])
+    zoomed_cseries = list(zxyc[2])
     plt.clf()
-    plt.scatter(xseries(), yseries(), s=0.5, c=awgwls_colors())
+    plt.scatter(zoomed_xseries, zoomed_yseries, s=0.5, c=zoomed_cseries)
     plt.xlabel(args.xaxis)
     plt.ylabel(args.yaxis)
     plt.title('OCR quality')
     if args.labels:
-        for i in range(len(samohlasky)):
-            plt.text(samohlasky[i], skdists[i], label(i))
+        for i in range(len(zoomed_xseries)):
+            plt.text(zoomed_xseries[i], zoomed_yseries[i], label(i))
     plt.savefig('scatter.png', figsize=(6,4), dpi=300)
     plt.show()
 
@@ -82,5 +101,4 @@ print("Reading avgwls")
 avgwls = [float(line) for line in open("current_avgwls").read().split('\n') if line]
 print("Reading freqs")
 train=pd.read_csv("current_freqs", dtype=np.float)
-
 plot_scatter()
