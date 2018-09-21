@@ -68,31 +68,38 @@ def xseries():
 def yseries():
     return series(args.yaxis)
 
-def xycseries():
-    return zip(xseries(), yseries(), awgwls_colors())
+def xyciseries():
+    xs = xseries()
+    return zip(xs, yseries(), awgwls_colors(), range(len(xs)))
 
 def in_zoom_window(x,y):
     return abs(x-args.zx) <= args.zdx and abs(y-args.zy) <= args.zdy
 
-def zoomed_xycseries():
+def zoomed_xyciseries():
     if args.zx or args.zy:
-        return [(x,y,c) for x,y,c in xycseries() if in_zoom_window(x,y)]
+        return [(x,y,c,i) for x,y,c,i in xyciseries() if in_zoom_window(x,y)]
     else:
-        return xycseries()
+        return xyciseries()
+
+def marker_size(c):
+    return 11 if c < 10 else (120 - c) / 10 if c < 100 else (2100 - c) / 1000 if c < 1600 else 0.5
 
 def plot_scatter():
-    zxyc = list(zip(*zoomed_xycseries()))
+    zxyc = list(zip(*zoomed_xyciseries()))
     zoomed_xseries = list(zxyc[0])
     zoomed_yseries = list(zxyc[1])
     zoomed_cseries = list(zxyc[2])
+    ids = list(zxyc[3])
     plt.clf()
-    plt.scatter(zoomed_xseries, zoomed_yseries, s=0.5, c=zoomed_cseries)
+    plt.scatter(zoomed_xseries, zoomed_yseries, s=marker_size(len(zoomed_cseries)), c=zoomed_cseries)
     plt.xlabel(args.xaxis)
     plt.ylabel(args.yaxis)
     plt.title('OCR quality')
     if args.labels:
-        for i in range(len(zoomed_xseries)):
-            plt.text(zoomed_xseries[i], zoomed_yseries[i], label(i))
+        for i,id in enumerate(ids):
+            x = zoomed_xseries[i]
+            y = zoomed_yseries[i]
+            plt.text(x, y, label(id))
     plt.savefig('scatter.png', figsize=(6,4), dpi=300)
     plt.show()
 

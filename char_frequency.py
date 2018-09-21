@@ -1,6 +1,7 @@
 #!/usr/bin/python3.6
 import csv
 import re
+import pandas as pd
 
 all_keys = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzáäčďéíľĺňóôŕřšťúýžÁÄČĎÉÍĽĹŇÓÔŔŘŠŤÚÝŽ'
 
@@ -15,8 +16,8 @@ def average_word_length(str):
     return sum(len(word) for word in words) / len(words)
 
 print("Reading docs")
-with open('current_docs') as f:
-    content = f.readlines()
+df = pd.read_csv('current_docs')
+content = df[df.columns[1]].values
 
 print("Calculating average word lengths")
 avgwls = [average_word_length(x) for x in content]
